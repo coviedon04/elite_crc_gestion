@@ -2,6 +2,7 @@
 require('dotenv').config(); // Carga .env (importante que esté antes de db.js)
 const express = require('express');
 const { sql, connectDB } = require('./db'); // Importar desde db.js
+const path = require('path')
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -88,4 +89,5 @@ const startServer = async () => {
 };
 
 // Llamar a la función para iniciar todo
+console.log ("cargando aplicación")
 startServer();
