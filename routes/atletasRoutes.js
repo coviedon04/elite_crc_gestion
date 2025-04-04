@@ -1,7 +1,6 @@
 // routes/atletasRoutes.js
 const express = require('express');
 const { sql } = require('../db'); // Importar sql para tipos
-
 const router = express.Router();
 
 // Función para configurar rutas con el pool de BD inyectado
@@ -11,9 +10,9 @@ const atletasRoutes = (dbPool) => {
     }
 
     // POST /api/clientes/:clienteId/atletas - Crear un nuevo atleta asociado a un cliente
-    router.post('/:clienteId/atletas', async (req, res) => {
-        console.log ("params",  req.params.clienteId)
-        console.log ("body", req.body)
+    router.post('/:clienteId/atletas', async (req, res) => { //RUTA CORREGIDA
+        console.log("params", req.params.clienteId);
+        console.log("body", req.body);
         const clienteId = req.params.clienteId; // Obtener el ID del cliente de los parámetros de la URL
         const { nombre, apellidos, fecha_nacimiento, categoria, peso, grado } = req.body; // Obtener datos del atleta del cuerpo de la petición
 
@@ -52,18 +51,16 @@ const atletasRoutes = (dbPool) => {
             // Enviar respuesta exitosa
             if (result.recordset && result.recordset.length > 0) {
                 const nuevoAtletaId = result.recordset[0].id;
-                res.status(201).json({ message: 'Atleta creado exitosamente', atletaId: nuevoAtletaId });
+                return res.status(201).json({ message: 'Atleta creado exitosamente', atletaId: nuevoAtletaId }); // Return añadido
             } else {
                 console.error('Error: Inserción exitosa pero no se devolvió el ID.');
-                res.status(500).json({ message: 'Error al crear el atleta, no se pudo obtener el ID.' });
+                return res.status(500).json({ message: 'Error al crear el atleta, no se pudo obtener el ID.' }); // Return añadido
             }
 
         } catch (err) {
             console.error('Error al crear atleta:', err);
-            res.status(500).json({ message: 'Error interno del servidor al crear atleta', error: err.message });
+            return res.status(500).json({ message: 'Error interno del servidor al crear atleta', error: err.message }); // Return añadido
         }
-
-        res.send("Ok")
     });
 
     return router;
