@@ -2,7 +2,7 @@
 node_modules
 
 # Archivo de variables de entorno (contiene secretos)
-.env
+
 
 # Archivos de log
 npm-debug.log*

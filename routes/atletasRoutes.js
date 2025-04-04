@@ -22,7 +22,7 @@ const atletasRoutes = (dbPool) => {
             return res.status(400).json({ message: 'Faltan campos obligatorios: clienteId, nombre, apellidos, fecha_nacimiento' });
         }
 
-        /*try {
+        try {
             // Verificar que el clienteId sea un UUID válido
             if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(clienteId)) {
                 return res.status(400).json({ message: 'clienteId no tiene un formato UUID válido.' });
@@ -61,7 +61,7 @@ const atletasRoutes = (dbPool) => {
         } catch (err) {
             console.error('Error al crear atleta:', err);
             res.status(500).json({ message: 'Error interno del servidor al crear atleta', error: err.message });
-        }*/
+        }
 
         res.send("Ok")
     });
