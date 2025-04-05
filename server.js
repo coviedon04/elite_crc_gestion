@@ -3,7 +3,7 @@ require('dotenv').config(); // Carga .env (importante que esté antes de db.js)
 const express = require('express');
 const { sql, connectDB } = require('./db'); // Importar desde db.js
 const path = require('path');
-
+const authRoutes = require('./routes/authRoutes'); // Importar las rutas de autenticación
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -42,6 +42,8 @@ const startServer = async () => {
 
         app.use(express.json()); // Middleware para analizar JSON (IMPORTANTE: antes de las rutas)
         app.use(express.urlencoded({ extended: true }));
+
+        app.use('/api/auth', authRoutes(dbPool)); // Usar las rutas de autenticación bajo el prefijo /api/auth y pasar dbPool
 
         // Middleware para registrar todas las peticiones
         app.use((req, res, next) => {
