@@ -6,7 +6,10 @@ const { sql } = require('../db'); // Importar sql para tipos
 // Función para registrar un nuevo usuario
 const register = async (req, res, dbPool) => {
     const { nombre, apellidos, correo, clave, telefono, direccion, cedula } = req.body;
-    const defaultPerfilId = '5654AD77-943E-4F72-BB2F-2751C54128F0'; // Reemplaza con el ID del perfil "Cliente"
+    const defaultPerfilId = '5654AD77-943E-4F72-BB2F-2751C54128F0'; // ID del perfil "Cliente" (valor por default)
+    //const defaultPerfilId = '6C8A2A6E-6DF4-4FA7-8CB8-1757D68345D8'; // ID del perfil "Administrator"
+    //const defaultPerfilId = '3777ADDD-B138-42D3-9BFE-E7C089D501AC'; // ID del perfil "SuperUsuario"
+    
 
     // Validación básica
     if (!nombre || !apellidos || !correo || !clave) {
@@ -80,7 +83,7 @@ const register = async (req, res, dbPool) => {
     }
 };
 // Función para iniciar sesión
-const login = async (req, res, dbPool) => {  // <- Agrega dbPool como parámetro
+const login = async (req, res, dbPool) => {
     const { correo, clave } = req.body;
 
     // Validación básica
@@ -90,7 +93,7 @@ const login = async (req, res, dbPool) => {  // <- Agrega dbPool como parámetro
 
     try {
         // 1. Buscar el usuario en la base de datos
-        const request = dbPool.request(); // <- Usa el dbPool que se pasa como parámetro
+        const request = dbPool.request();
         request.input('correo', sql.VarChar(128), correo);
 
         const query = `
@@ -108,18 +111,29 @@ const login = async (req, res, dbPool) => {  // <- Agrega dbPool como parámetro
 
         const user = result.recordset[0];
 
-        // 3. Comparar la contraseña ingresada con la contraseña encriptada en la base de datos
-        const passwordMatch = await bcrypt.compare(clave, user.clave);
+        // 3. Convertir la contraseña ingresada a una cadena
+        const claveIngresada = String(clave);
 
-        // 4. Si las contraseñas no coinciden, devolver un error
+        // 4. Convertir el hash almacenado a una cadena (si no lo es)
+        const claveAlmacenada = String(user.clave);
+
+        // Imprimir los valores en la consola
+        console.log("Clave ingresada:", claveIngresada); // Agregar esta línea
+        console.log("Clave almacenada:", claveAlmacenada); // Agregar esta línea
+
+        // 5. Comparar la contraseña ingresada con la contraseña encriptada en la base de datos
+        const passwordMatch = await bcrypt.compare(claveIngresada, claveAlmacenada);
+
+        // 6. Si las contraseñas no coinciden, devolver un error
         if (!passwordMatch) {
             return res.status(404).json({ message: 'Correo o contraseña incorrectos' });
         }
 
-        // 5. Generar un token de autenticación
+        // 7. Generar un token de autenticación
+        console.log("JWT_SECRET (Registro):", process.env.JWT_SECRET);
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' }); // Usa una clave secreta segura y un tiempo de expiración
 
-        // 6. Enviar el token en la respuesta
+        // 8. Enviar el token en la respuesta
         res.status(200).json({ message: 'Inicio de sesión exitoso', token });
 
     } catch (err) {

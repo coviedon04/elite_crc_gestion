@@ -2,9 +2,9 @@
 const express = require('express');
 const { sql } = require('../db'); // Importar sql para tipos
 const router = express.Router();
+const { authorize } = require('../middleware/authMiddleware'); // Importar el middleware authorize
 
-
-// Función para configurar rutas con el pool de BD inyectado
+// Función para configurar las rutas de atletas
 const atletasRoutes = (dbPool) => {
     if (!dbPool) {
         throw new Error("El pool de conexiones no se ha proporcionado a atletasRoutes");
@@ -64,8 +64,8 @@ const atletasRoutes = (dbPool) => {
         }
     });
 
-    // GET /api/clientes/:clienteId/atletas - Listar atletas asociados a un cliente
-    router.get('/:clienteId/atletas', async (req, res) => {
+    // GET /api/clientes/:clienteId/atletas - Listar atletas asociados a un cliente (solo clientes, administradores y superusuarios)
+    router.get('/:clienteId/atletas', authorize(dbPool,['Cliente', 'Administrator', 'SuperUsuario']), async (req, res) => {
         const clienteId = req.params.clienteId;
 
         // Validación básica
@@ -102,32 +102,26 @@ const atletasRoutes = (dbPool) => {
     });
 
 
-    // PUT /api/clientes/:clienteId/atletas/:atletaId - Editar categoría, peso y grado de un atleta
-    router.put('/:clienteId/atletas/:atletaId', async (req, res) => {
+    // PUT /api/clientes/:clienteId/atletas/:atletaId - Editar atleta (Clientes: categoria, peso, grado; Administradores: todos los campos)
+    router.put('/:clienteId/atletas/:atletaId', authorize(dbPool, ['Cliente', 'Administrator', 'SuperUsuario']), async (req, res) => {
         const clienteId = req.params.clienteId;
         const atletaId = req.params.atletaId;
-        const { categoria, peso, grado } = req.body;
+        const { nombre, apellidos, fecha_nacimiento, categoria, peso, grado } = req.body; // Incluir todos los campos
 
         // Validación básica
         if (!clienteId || !atletaId) {
             return res.status(400).json({ message: 'Faltan clienteId o atletaId' });
         }
 
-        if (!categoria && !peso && !grado) {
-            return res.status(400).json({ message: 'Debe proporcionar al menos un campo para actualizar (categoria, peso, grado)' });
-        }
+        // Obtener el rol del usuario desde el objeto de solicitud
+        const userRole = req.userRole;
 
-        try {
-            // Verificar que el clienteId y el atletaId sean UUIDs válidos
-            if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(clienteId) ||
-                !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(atletaId)) {
-                return res.status(400).json({ message: 'clienteId o atletaId no tienen un formato UUID válido.' });
-            }
+        // Construir la consulta SQL dinámicamente
+        let query = 'UPDATE Atletas SET ';
+        const updates = [];
 
-            // Construir la consulta SQL dinámicamente
-            let query = 'UPDATE Atletas SET ';
-            const updates = [];
-
+        if (userRole === 'Cliente') {
+            // Clientes solo pueden editar categoria, peso y grado
             if (categoria) {
                 updates.push('categoria = @categoria');
             }
@@ -138,24 +132,77 @@ const atletasRoutes = (dbPool) => {
                 updates.push('grado = @grado');
             }
 
-            query += updates.join(', '); // Unir los campos a actualizar con comas
-            query += ' WHERE id = @atletaId AND encargado_id = @clienteId;'; // Agregar la condición WHERE
-
-            // Preparar la consulta SQL
-            const request = dbPool.request();
-            request.input('atletaId', sql.UniqueIdentifier, atletaId);
-            request.input('clienteId', sql.UniqueIdentifier, clienteId);
-
+            // Validación para clientes
+            if (!categoria && !peso && !grado) { // Verificar solo los campos permitidos para clientes
+                return res.status(400).json({ message: 'Debe proporcionar al menos un campo para actualizar (categoria, peso, grado)' });
+            }
+        } else if (userRole === 'Administrator' || userRole === 'SuperUsuario') {
+            // Administradores y SuperUsuarios pueden editar todos los campos
+            if (nombre) {
+                updates.push('nombre = @nombre');
+            }
+            if (apellidos) {
+                updates.push('apellidos = @apellidos');
+            }
+            if (fecha_nacimiento) {
+                updates.push('fecha_nacimiento = @fecha_nacimiento');
+            }
             if (categoria) {
-                request.input('categoria', sql.VarChar(50), categoria);
+                updates.push('categoria = @categoria');
             }
             if (peso) {
-                request.input('peso', sql.Decimal(5, 2), peso);
+                updates.push('peso = @peso');
             }
             if (grado) {
-                request.input('grado', sql.VarChar(20), grado);
+                updates.push('grado = @grado');
             }
 
+            // Validación para administradores y superusuarios
+            if (!nombre && !apellidos && !fecha_nacimiento && !categoria && !peso && !grado) { // Verificar todos los campos
+                return res.status(400).json({ message: 'Debe proporcionar al menos un campo para actualizar' });
+            }
+        }
+
+        // Si no hay campos para actualizar, devolver un error
+        if (updates.length === 0) {
+            return res.status(400).json({ message: 'No hay campos válidos para actualizar según su rol' });
+        }
+
+        query += updates.join(', ');
+
+        // Construir la condición WHERE dinámicamente
+        let whereClause = ' WHERE id = @atletaId';
+        if (userRole === 'Cliente') {
+            whereClause += ' AND encargado_id = @clienteId';
+        }
+
+        query += whereClause + ';';
+
+        // Preparar la consulta SQL
+        const request = dbPool.request();
+        request.input('atletaId', sql.UniqueIdentifier, atletaId);
+        request.input('clienteId', sql.UniqueIdentifier, clienteId);
+
+        if (nombre) {
+            request.input('nombre', sql.VarChar(256), nombre);
+        }
+        if (apellidos) {
+            request.input('apellidos', sql.VarChar(256), apellidos);
+        }
+        if (fecha_nacimiento) {
+            request.input('fecha_nacimiento', sql.Date, fecha_nacimiento);
+        }
+        if (categoria) {
+            request.input('categoria', sql.VarChar(50), categoria);
+        }
+        if (peso) {
+            request.input('peso', sql.Decimal(5, 2), peso);
+        }
+        if (grado) {
+            request.input('grado', sql.VarChar(20), grado);
+        }
+
+        try {
             // Ejecutar la consulta
             const result = await request.query(query);
 
@@ -165,15 +212,14 @@ const atletasRoutes = (dbPool) => {
             } else {
                 res.status(404).json({ message: 'Atleta no encontrado o no pertenece al cliente especificado' });
             }
-
         } catch (err) {
             console.error('Error al editar atleta:', err);
             res.status(500).json({ message: 'Error interno del servidor al editar atleta', error: err.message });
         }
     });
 
-    // DELETE /api/clientes/:clienteId/atletas/:atletaId - Inhabilitar/Habilitar un atleta (alternar estado)
-    router.delete('/:clienteId/atletas/:atletaId', async (req, res) => {
+    // DELETE /api/clientes/:clienteId/atletas/:atletaId - Inhabilitar/Habilitar un atleta (solo administradores)
+    router.delete('/:clienteId/atletas/:atletaId', authorize(dbPool,['Administrator', 'SuperUsuario']), async (req, res) => {
         const clienteId = req.params.clienteId;
         const atletaId = req.params.atletaId;
 
@@ -218,8 +264,6 @@ const atletasRoutes = (dbPool) => {
             res.status(500).json({ message: 'Error interno del servidor al actualizar estado del atleta', error: err.message });
         }
     });
-
-    
 
     return router;
 };
