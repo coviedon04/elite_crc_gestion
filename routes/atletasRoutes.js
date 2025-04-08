@@ -219,7 +219,7 @@ const atletasRoutes = (dbPool) => {
     });
 
     // DELETE /api/clientes/:clienteId/atletas/:atletaId - Inhabilitar/Habilitar un atleta (solo administradores)
-    router.delete('/:clienteId/atletas/:atletaId', authorize(dbPool,['Administrator', 'SuperUsuario']), async (req, res) => {
+    router.delete('/:clienteId/atletas/:atletaId', authorize(dbPool, ['Administrator', 'SuperUsuario']), async (req, res) => {
         const clienteId = req.params.clienteId;
         const atletaId = req.params.atletaId;
 
@@ -234,20 +234,21 @@ const atletasRoutes = (dbPool) => {
                 !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(atletaId)) {
                 return res.status(400).json({ message: 'clienteId o atletaId no tienen un formato UUID válido.' });
             }
+    // Obtener el rol del usuario desde el objeto de solicitud
+            const userRole = req.userRole;
 
             // Preparar la consulta SQL para alternar el estado del atleta
             const request = dbPool.request();
             request.input('atletaId', sql.UniqueIdentifier, atletaId);
-            request.input('clienteId', sql.UniqueIdentifier, clienteId);
+            //request.input('clienteId', sql.UniqueIdentifier, clienteId);  //No se requiere
 
-            const query = `
+            let query = `
                 UPDATE Atletas
                 SET activo = CASE
                     WHEN activo = 1 THEN 0
                     ELSE 1
                 END
-                WHERE id = @atletaId AND encargado_id = @clienteId;
-            `;
+                WHERE id = @atletaId`; //AND encargado_id = @clienteId;
 
             // Ejecutar la consulta
             const result = await request.query(query);
@@ -256,7 +257,7 @@ const atletasRoutes = (dbPool) => {
             if (result.rowsAffected[0] > 0) {
                 res.status(200).json({ message: 'Estado del atleta actualizado exitosamente' });
             } else {
-                res.status(404).json({ message: 'Atleta no encontrado o no pertenece al cliente especificado' });
+                res.status(404).json({ message: 'Atleta no encontrado' });
             }
 
         } catch (err) {
