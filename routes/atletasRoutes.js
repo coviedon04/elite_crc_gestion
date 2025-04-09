@@ -65,29 +65,34 @@ const atletasRoutes = (dbPool) => {
     });
 
     // GET /api/clientes/:clienteId/atletas - Listar atletas asociados a un cliente (solo clientes, administradores y superusuarios)
-    router.get('/:clienteId/atletas', authorize(dbPool,['Cliente', 'Administrator', 'SuperUsuario']), async (req, res) => {
+    router.get('/:clienteId/atletas', authorize(dbPool, ['Cliente', 'Administrator', 'SuperUsuario']), async (req, res) => {
         const clienteId = req.params.clienteId;
-
-        // Validación básica
-        if (!clienteId) {
-            return res.status(400).json({ message: 'Falta el clienteId' });
-        }
+        const userRole = req.userRole; // Obtener el rol del usuario
 
         try {
-            // Verificar que el clienteId sea un UUID válido
-            if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(clienteId)) {
-                return res.status(400).json({ message: 'clienteId no tiene un formato UUID válido.' });
-            }
-
-            // Preparar la consulta SQL para obtener los atletas
+            // Preparar la consulta SQL
             const request = dbPool.request();
-            request.input('clienteId', sql.UniqueIdentifier, clienteId);
-
-            const query = `
+            let query = `
                 SELECT id, nombre, apellidos, categoria
                 FROM Atletas
-                WHERE encargado_id = @clienteId;
             `;
+
+            // Agregar condición WHERE si el usuario es Cliente
+            if (userRole === 'Cliente') {
+                // Validación básica
+                if (!clienteId) {
+                    return res.status(400).json({ message: 'Falta el clienteId' });
+                }
+            // Verificar que el clienteId sea un UUID válido
+            if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(clienteId)) {
+                    return res.status(400).json({ message: 'clienteId no tiene un formato UUID válido.' });
+                }
+                request.input('clienteId', sql.UniqueIdentifier, clienteId);
+                query += ` WHERE encargado_id = @clienteId AND activo = 1`; // Solo atletas activos
+            } else {
+                // Administradores y SuperUsuarios ven todos los atletas activos
+                query += ` WHERE activo = 1`;
+            }
 
             // Ejecutar la consulta
             const result = await request.query(query);

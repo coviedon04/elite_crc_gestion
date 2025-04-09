@@ -130,7 +130,7 @@ const login = async (req, res, dbPool) => {
         }
 
         // 7. Generar un token de autenticación
-        console.log("JWT_SECRET (Registro):", process.env.JWT_SECRET);
+        //console.log("JWT_SECRET (Registro):", process.env.JWT_SECRET); //Desactivar para que no imprima la clave de .env
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' }); // Usa una clave secreta segura y un tiempo de expiración
 
         // 8. Enviar el token en la respuesta

@@ -3,12 +3,31 @@ require('dotenv').config(); // Carga .env (importante que esté antes de db.js)
 const express = require('express');
 const { sql, connectDB } = require('./db'); // Importar desde db.js
 const path = require('path');
+const fs = require('fs'); // Importar el módulo 'fs'
+const https = require('https'); // Importar el módulo 'https'
 const authRoutes = require('./routes/authRoutes'); // Importar las rutas de autenticación
+
+//Variables para HTTPS
+const selfsigned = require('selfsigned');
+const attributes = [{ name: 'commonName', value: 'localhost' }];
+const pems = selfsigned.generate(attributes, { days: 365 });
+
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Variable global para almacenar el pool de conexiones
 let dbPool;
+
+// Opciones para HTTPS
+/*const options = {
+    key: fs.readFileSync(path.resolve(__dirname, 'private.key'), { passphrase: '4162310651' }), 
+    cert: fs.readFileSync(path.resolve(__dirname, 'certificate.crt'))
+};*/
+
+const options = {
+    key: pems.private,
+    cert: pems.cert
+};
 
 // Ruta de Bienvenida (sin cambios)
 app.get('/', (req, res) => {
@@ -72,12 +91,31 @@ const startServer = async () => {
         const atletasRoutes = createAtletasRoutes(dbPool);
         app.use('/api/clientes', atletasRoutes); // Montar las rutas bajo /api/clientes
 
+        // Importar y usar las rutas de torneos
+        const createTorneosRoutes = require('./routes/torneosRoutes');
+        const torneosRoutes = createTorneosRoutes(dbPool);
+        app.use('/api/torneos', torneosRoutes); // Montar las rutas bajo /api/torneos
+
         // --- Fin Rutas de la API ---
 
         // 2. Una vez conectado a la BD y rutas configuradas, iniciar el servidor Express
-        app.listen(port, () => {
-            console.log(`Servidor corriendo en http://localhost:${port}`);
+        https.createServer(options, app).listen(port, () => {
+            console.log(`Servidor corriendo en https://localhost:${port}`);
             console.log('Listo para recibir peticiones.');
+            
+            /*// Imprimir las rutas, se debe desactivar esta función, es solo para debuggear
+            console.log("Rutas disponibles:");
+            app._router.stack.forEach(function(middleware){
+                if(middleware.route){ // routes registered directly
+                    console.log(middleware.route.path, middleware.route.stack[0].method)
+                } else if(middleware.handle.stack){ // router middleware
+                    middleware.handle.stack.forEach(function(handler){
+                        route = handler.route
+                        route && console.log(route.path, route.stack[0].method)
+                    })
+                }
+            })*/
+
         });
 
     } catch (err) {
