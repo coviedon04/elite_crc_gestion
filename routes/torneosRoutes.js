@@ -4,9 +4,10 @@ const { sql } = require('../db');
 const router = express.Router();
 const { authorize } = require('../middleware/authMiddleware');
 
+//Configura las rutas para la gestión de torneos
 module.exports = (dbPool) => {
 
-    // POST /api/torneos - Crear un nuevo torneo (solo administradores y superusuarios)
+    // POST /api/torneos - Crea un nuevo torneo (solo administradores y superusuarios)
     router.post('/', authorize(dbPool, ['Administrator', 'SuperUsuario']), async (req, res) => {
         const { nombre, fecha_inicio, fecha_fin, lugar, descripcion, costo } = req.body;
 
@@ -36,7 +37,7 @@ module.exports = (dbPool) => {
             // Ejecutar la consulta
             const result = await request.query(query);
 
-            // Enviar respuesta exitosa
+            // Envia respuesta exitosa
             if (result.recordset && result.recordset.length > 0) {
                 const nuevoTorneoId = result.recordset[0].id;
                 res.status(201).json({ message: 'Torneo creado exitosamente', torneoId: nuevoTorneoId });
@@ -51,10 +52,10 @@ module.exports = (dbPool) => {
         }
     });
 
-    // GET /api/torneos - Listar todos los torneos activos (todos los usuarios autenticados)
+    // GET /api/torneos - Lista todos los torneos activos (todos los usuarios autenticados)
     router.get('/', authorize(dbPool, ['Cliente', 'Administrator', 'SuperUsuario']), async (req, res) => {
         try {
-            // Preparar la consulta SQL para obtener los torneos activos
+            // Prepara la consulta SQL para obtener los torneos activos
             const request = dbPool.request();
             const query = `
                 SELECT id, nombre, fecha_inicio, fecha_fin, lugar, descripcion, costo
@@ -65,7 +66,7 @@ module.exports = (dbPool) => {
             // Ejecutar la consulta
             const result = await request.query(query);
 
-            // Enviar la lista de torneos
+            // Envia la lista de torneos
             res.status(200).json(result.recordset);
 
         } catch (err) {
@@ -74,7 +75,7 @@ module.exports = (dbPool) => {
         }
     });
     
-     // GET /api/torneos/:id - Obtener la información de un torneo específico (todos los usuarios autenticados)
+     // GET /api/torneos/:id - Obtiene la información de un torneo específico (todos los usuarios autenticados)
      router.get('/:id', authorize(dbPool, ['Cliente', 'Administrator', 'SuperUsuario']), async (req, res) => {
         const torneoId = req.params.id;
 
@@ -89,7 +90,7 @@ module.exports = (dbPool) => {
                 return res.status(400).json({ message: 'El ID del torneo no tiene un formato UUID válido.' });
             }
 
-            // Preparar la consulta SQL para obtener la información del torneo
+            // Prepara la consulta SQL para obtener la información del torneo
             const request = dbPool.request();
             request.input('torneoId', sql.UniqueIdentifier, torneoId);
 
@@ -99,10 +100,10 @@ module.exports = (dbPool) => {
                 WHERE id = @torneoId;
             `;
 
-            // Ejecutar la consulta
+            // Ejecuta la consulta
             const result = await request.query(query);
 
-            // Verificar si se encontró el torneo
+            // Verifica si se encontró el torneo
             if (result.recordset && result.recordset.length > 0) {
                 // Enviar la información del torneo
                 res.status(200).json(result.recordset[0]);
@@ -116,7 +117,7 @@ module.exports = (dbPool) => {
         }
     });
 
-       // PUT /api/torneos/:id - Actualizar la información de un torneo específico (solo administradores y superusuarios)
+       // PUT /api/torneos/:id - Actualiza la información de un torneo específico (solo administradores y superusuarios)
        router.put('/:id', authorize(dbPool, ['Administrator', 'SuperUsuario']), async (req, res) => {
         const torneoId = req.params.id;
         const { nombre, fecha_inicio, fecha_fin, lugar, descripcion, costo } = req.body;
@@ -131,13 +132,13 @@ module.exports = (dbPool) => {
             return res.status(400).json({ message: 'El ID del torneo no tiene un formato UUID válido.' });
         }
 
-        // Si no hay campos para actualizar, devolver un error
+        // Si no hay campos para actualizar, devuelve un error
         if (!nombre && !fecha_inicio && !fecha_fin && !lugar && !descripcion && !costo) {
             return res.status(400).json({ message: 'Debe proporcionar al menos un campo para actualizar' });
         }
 
         try {
-            // Construir la consulta SQL dinámicamente
+            // Construye la consulta SQL dinámicamente
             let query = 'UPDATE Torneos SET ';
             const updates = [];
 
@@ -163,7 +164,7 @@ module.exports = (dbPool) => {
             query += updates.join(', ');
             query += ' WHERE id = @torneoId;';
 
-            // Preparar la consulta SQL
+            // Prepara la consulta SQL
             const request = dbPool.request();
             request.input('torneoId', sql.UniqueIdentifier, torneoId);
 
@@ -186,10 +187,10 @@ module.exports = (dbPool) => {
                 request.input('costo', sql.Decimal(10, 2), costo);
             }
 
-            // Ejecutar la consulta
+            // Ejecuta la consulta
             const result = await request.query(query);
 
-            // Verificar si se actualizó el torneo
+            // Verifica si se actualizó el torneo
             if (result.rowsAffected[0] > 0) {
                 res.status(200).json({ message: 'Torneo actualizado exitosamente' });
             } else {
@@ -202,7 +203,7 @@ module.exports = (dbPool) => {
         }
     });
 
-        // DELETE /api/torneos/:id - Eliminar un torneo específico (solo administradores y superusuarios)
+        // DELETE /api/torneos/:id - Elimina un torneo específico (solo administradores y superusuarios)
         router.delete('/:id', authorize(dbPool, ['Administrator', 'SuperUsuario']), async (req, res) => {
             const torneoId = req.params.id;
     
@@ -211,13 +212,13 @@ module.exports = (dbPool) => {
                 return res.status(400).json({ message: 'Falta el ID del torneo' });
             }
     
-            // Verificar que el ID del torneo sea un UUID válido
+            // Verifica que el ID del torneo sea un UUID válido
             if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(torneoId)) {
                 return res.status(400).json({ message: 'El ID del torneo no tiene un formato UUID válido.' });
             }
     
             try {
-                // Preparar la consulta SQL para eliminar el torneo
+                // Prepara la consulta SQL para eliminar el torneo
                 const request = dbPool.request();
                 request.input('torneoId', sql.UniqueIdentifier, torneoId);
     
@@ -229,7 +230,7 @@ module.exports = (dbPool) => {
                 // Ejecutar la consulta
                 const result = await request.query(query);
     
-                // Verificar si se eliminó el torneo
+                // Verifica si se eliminó el torneo
                 if (result.rowsAffected[0] > 0) {
                     res.status(200).json({ message: 'Torneo eliminado exitosamente' });
                 } else {

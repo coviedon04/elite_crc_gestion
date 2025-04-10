@@ -4,9 +4,10 @@ const { sql } = require('../db');
 const router = express.Router();
 const { authorize } = require('../middleware/authMiddleware');
 
+//Configura las rutas para la gestión de pagos
 module.exports = (dbPool) => {
 
-    // POST /api/pagos - Registrar un nuevo pago (solo administradores y superusuarios)
+    // POST /api/pagos - Registra un nuevo pago (solo administradores y superusuarios)
     router.post('/', authorize(dbPool, ['Administrator', 'SuperUsuario']), async (req, res) => {
         const { atleta_id, tipo_pago, monto, fecha_pago, descripcion } = req.body;
 
@@ -16,12 +17,12 @@ module.exports = (dbPool) => {
         }
 
         try {
-            // Verificar que el atleta_id sea un UUID válido
+            // Verifica que el atleta_id sea un UUID válido
             if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(atleta_id)) {
                 return res.status(400).json({ message: 'atleta_id no tiene un formato UUID válido.' });
             }
 
-            // Preparar la consulta SQL para insertar el pago
+            // Prepara la consulta SQL para insertar el pago
             const request = dbPool.request();
             request.input('atleta_id', sql.UniqueIdentifier, atleta_id);
             request.input('tipo_pago', sql.VarChar(50), tipo_pago);
@@ -37,10 +38,10 @@ module.exports = (dbPool) => {
                 VALUES (@atleta_id, @tipo_pago, @monto, @fecha_pago, @descripcion);
             `;
 
-            // Ejecutar la consulta
+            // Ejecuta la consulta
             const result = await request.query(query);
 
-            // Enviar respuesta exitosa
+            // Envia respuesta exitosa
             if (result.recordset && result.recordset.length > 0) {
                 const nuevoPagoId = result.recordset[0].id;
                 res.status(201).json({ message: 'Pago registrado exitosamente', pagoId: nuevoPagoId });
@@ -55,7 +56,7 @@ module.exports = (dbPool) => {
         }
     });
 
-    // GET /api/pagos - Listar todos los pagos (todos los usuarios autenticados)
+    // GET /api/pagos - Lista todos los pagos (todos los usuarios autenticados)
     router.get('/', authorize(dbPool, ['Cliente', 'Administrator', 'SuperUsuario']), async (req, res) => {
         const userRole = req.userRole;
         const userId = req.userId;
@@ -76,7 +77,7 @@ module.exports = (dbPool) => {
                 INNER JOIN Atletas a ON p.atleta_id = a.id
             `;
 
-            // Si el usuario es Cliente, agregar condición para filtrar por los atletas del cliente
+            // Si el usuario es Cliente, agrega la condición para filtrar por los atletas del cliente
             if (userRole === 'Cliente') {
                 query += `
                     WHERE a.encargado_id = @userId
@@ -96,7 +97,7 @@ module.exports = (dbPool) => {
         }
     });
 
-    // PUT /api/pagos/:id - Actualizar un pago específico (solo administradores y superusuarios)
+    // PUT /api/pagos/:id - Actualiza un pago específico (solo administradores y superusuarios)
     router.put('/:id', authorize(dbPool, ['Administrator', 'SuperUsuario']), async (req, res) => {
         const pagoId = req.params.id;
         const { tipo_pago, monto, fecha_pago, descripcion } = req.body;
@@ -111,13 +112,13 @@ module.exports = (dbPool) => {
             return res.status(400).json({ message: 'El ID del pago no tiene un formato UUID válido.' });
         }
 
-        // Si no hay campos para actualizar, devolver un error
+        // Si no hay campos para actualizar, devuelve un error
         if (!tipo_pago && !monto && !fecha_pago && !descripcion) {
             return res.status(400).json({ message: 'Debe proporcionar al menos un campo para actualizar' });
         }
 
         try {
-            // Construir la consulta SQL dinámicamente
+            // Construye la consulta SQL dinámicamente
             let query = 'UPDATE Pagos SET ';
             const updates = [];
 
@@ -137,7 +138,7 @@ module.exports = (dbPool) => {
             query += updates.join(', ');
             query += ' WHERE id = @pagoId;';
 
-            // Preparar la consulta SQL
+            // Prepara la consulta SQL
             const request = dbPool.request();
             request.input('pagoId', sql.UniqueIdentifier, pagoId);
 
@@ -154,10 +155,10 @@ module.exports = (dbPool) => {
                 request.input('descripcion', sql.VarChar(1024), descripcion);
             }
 
-            // Ejecutar la consulta
+            // Ejecuta la consulta
             const result = await request.query(query);
 
-            // Verificar si se actualizó el pago
+            // Verifica si se actualizó el pago
             if (result.rowsAffected[0] > 0) {
                 res.status(200).json({ message: 'Pago actualizado exitosamente' });
             } else {
@@ -170,7 +171,7 @@ module.exports = (dbPool) => {
         }
     });
 
-    // DELETE /api/pagos/:id - Eliminar un pago específico (solo administradores y superusuarios)
+    // DELETE /api/pagos/:id - Elimina un pago específico (solo administradores y superusuarios)
     router.delete('/:id', authorize(dbPool, ['Administrator', 'SuperUsuario']), async (req, res) => {
         const pagoId = req.params.id;
 
@@ -179,13 +180,13 @@ module.exports = (dbPool) => {
             return res.status(400).json({ message: 'Falta el ID del pago' });
         }
 
-        // Verificar que el ID del pago sea un UUID válido
+        // Verifica que el ID del pago sea un UUID válido
         if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(pagoId)) {
             return res.status(400).json({ message: 'El ID del pago no tiene un formato UUID válido.' });
         }
 
         try {
-            // Preparar la consulta SQL para eliminar el pago
+            // Prepara la consulta SQL para eliminar el pago
             const request = dbPool.request();
             request.input('pagoId', sql.UniqueIdentifier, pagoId);
 
@@ -194,10 +195,10 @@ module.exports = (dbPool) => {
                 WHERE id = @pagoId;
             `;
 
-            // Ejecutar la consulta
+            // Ejecuta la consulta
             const result = await request.query(query);
 
-            // Verificar si se eliminó el pago
+            // Verifica si se eliminó el pago
             if (result.rowsAffected[0] > 0) {
                 res.status(200).json({ message: 'Pago eliminado exitosamente' });
             } else {

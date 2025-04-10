@@ -22,8 +22,8 @@ const dbConfig = {
     }
 };
 
-// Crear el pool de conexiones y exportarlo
-// Usamos una función async para poder usar await y manejar errores iniciales
+// Crea el pool de conexiones y lo exporta
+// Se usa una función async para poder usar await y manejar errores iniciales
 let pool;
 const connectDB = async () => {
     try {
@@ -33,13 +33,13 @@ const connectDB = async () => {
         return pool; // Devuelve el pool una vez conectado
     } catch (err) {
         console.error('Error al crear el pool de conexiones:', err);
-        // Salir del proceso si no se puede conectar a la BD al inicio
+        // Sale del proceso si no se puede conectar a la BD al inicio
         process.exit(1);
     }
 };
 
-// Exportar la función para conectar y obtener el pool
+// Exporta la función para conectar y obtener el pool
 module.exports = {
-    sql,      // Exportar el objeto sql para tipos de datos si es necesario
-    connectDB // Exportar la función que conecta y devuelve el pool
+    sql,      // Exporta el objeto sql para tipos de datos si es necesario
+    connectDB // Exporta la función que conecta y devuelve el pool
 };

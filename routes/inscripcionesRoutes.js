@@ -4,9 +4,10 @@ const { sql } = require('../db');
 const router = express.Router();
 const { authorize } = require('../middleware/authMiddleware');
 
+//Configura las rutas de inscripciones
 module.exports = (dbPool) => {
 
-    // POST /api/inscripciones - Crear una nueva inscripción (administradores, superusuarios y clientes)
+    // POST /api/inscripciones - Crea una nueva inscripción (administradores, superusuarios y clientes)
     router.post('/', authorize(dbPool, ['Cliente', 'Administrator', 'SuperUsuario']), async (req, res) => {
         const { atleta_id, torneo_id, fecha_inscripcion, pago_confirmado } = req.body;
         const userRole = req.userRole;
@@ -18,13 +19,13 @@ module.exports = (dbPool) => {
         }
 
         try {
-            // Verificar que el atleta_id y el torneo_id sean UUIDs válidos
+            // Verifica que el atleta_id y el torneo_id sean UUIDs válidos
             if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(atleta_id) ||
                 !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(torneo_id)) {
                 return res.status(400).json({ message: 'atleta_id o torneo_id no tienen un formato UUID válido.' });
             }
 
-            // Preparar la consulta SQL para insertar la inscripción
+            // Prepara la consulta SQL para insertar la inscripción
             const request = dbPool.request();
             request.input('atleta_id', sql.UniqueIdentifier, atleta_id);
             request.input('torneo_id', sql.UniqueIdentifier, torneo_id);
@@ -39,9 +40,9 @@ module.exports = (dbPool) => {
                 VALUES (@atleta_id, @torneo_id, @fecha_inscripcion, @pago_confirmado)
             `;
 
-            // Si el usuario es Cliente, verificar que el atleta pertenece al cliente
+            // Si el usuario es Cliente, verifica que el atleta pertenece al cliente
             if (userRole === 'Cliente') {
-                // Verificar si el atleta pertenece al cliente
+                // Verifica si el atleta pertenece al cliente
                 const checkAtletaQuery = `
                     SELECT 1
                     FROM Atletas
@@ -59,7 +60,7 @@ module.exports = (dbPool) => {
             // Ejecutar la consulta
             const result = await request.query(query);
 
-            // Enviar respuesta exitosa
+            // Envia respuesta exitosa
             if (result.recordset && result.recordset.length > 0) {
                 const nuevaInscripcionId = result.recordset[0].id;
                 res.status(201).json({ message: 'Inscripción creada exitosamente', inscripcionId: nuevaInscripcionId });
@@ -74,13 +75,13 @@ module.exports = (dbPool) => {
         }
     });
 
-    // GET /api/inscripciones - Listar todas las inscripciones (todos los usuarios autenticados)
+    // GET /api/inscripciones - Lista todas las inscripciones (todos los usuarios autenticados)
     router.get('/', authorize(dbPool, ['Cliente', 'Administrator', 'SuperUsuario']), async (req, res) => {
         const userRole = req.userRole;
         const userId = req.userId;
 
         try {
-            // Preparar la consulta SQL
+            // Prepara la consulta SQL
             const request = dbPool.request();
             let query = `
                 SELECT
@@ -95,7 +96,7 @@ module.exports = (dbPool) => {
                 INNER JOIN Torneos t ON i.torneo_id = t.id
             `;
 
-            // Si el usuario es Cliente, agregar condición para filtrar por los atletas del cliente
+            // Si el usuario es Cliente, agrega condición para filtrar por los atletas del cliente
             if (userRole === 'Cliente') {
                 query += `
                     WHERE a.encargado_id = @userId
@@ -103,10 +104,10 @@ module.exports = (dbPool) => {
                 request.input('userId', sql.UniqueIdentifier, userId);
             }
 
-            // Ejecutar la consulta
+            // Ejecuta la consulta
             const result = await request.query(query);
 
-            // Enviar la lista de inscripciones
+            // Envia la lista de inscripciones
             res.status(200).json(result.recordset);
 
         } catch (err) {
@@ -115,7 +116,7 @@ module.exports = (dbPool) => {
         }
     });
 
-    // GET /api/inscripciones/:id - Obtener la información de una inscripción específica (todos los usuarios autenticados)
+    // GET /api/inscripciones/:id - Obtiene la información de una inscripción específica (todos los usuarios autenticados)
     router.get('/:id', authorize(dbPool, ['Cliente', 'Administrator', 'SuperUsuario']), async (req, res) => {
         const inscripcionId = req.params.id;
         const userRole = req.userRole;
@@ -127,12 +128,12 @@ module.exports = (dbPool) => {
         }
 
         try {
-            // Verificar que el ID de la inscripción sea un UUID válido
+            // Verifica que el ID de la inscripción sea un UUID válido
             if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(inscripcionId)) {
                 return res.status(400).json({ message: 'El ID de la inscripción no tiene un formato UUID válido.' });
             }
 
-            // Preparar la consulta SQL para obtener la información de la inscripción
+            // Prepara la consulta SQL para obtener la información de la inscripción
             const request = dbPool.request();
             request.input('inscripcionId', sql.UniqueIdentifier, inscripcionId);
 
@@ -149,18 +150,18 @@ module.exports = (dbPool) => {
                 WHERE i.id = @inscripcionId
             `;
 
-            // Si el usuario es Cliente, agregar condición para verificar que la inscripción pertenece al cliente
+            // Si el usuario es Cliente, agrega la condición para verificar que la inscripción pertenece al cliente
             if (userRole === 'Cliente') {
                 query += ` AND a.encargado_id = @userId`;
                 request.input('userId', sql.UniqueIdentifier, userId);
             }
 
-            // Ejecutar la consulta
+            // Ejecuta la consulta
             const result = await request.query(query);
 
-            // Verificar si se encontró la inscripción
+            // Verifica si se encontró la inscripción
             if (result.recordset && result.recordset.length > 0) {
-                // Enviar la información de la inscripción
+                // Envia la información de la inscripción
                 res.status(200).json(result.recordset[0]);
             } else {
                 res.status(404).json({ message: 'Inscripción no encontrada' });
@@ -172,7 +173,7 @@ module.exports = (dbPool) => {
         }
     });
 
-    // PUT /api/inscripciones/:id - Actualizar la información de una inscripción específica (solo administradores y superusuarios)
+    // PUT /api/inscripciones/:id - Actualiza la información de una inscripción específica (solo administradores y superusuarios)
     router.put('/:id', authorize(dbPool, ['Administrator', 'SuperUsuario']), async (req, res) => {
         const inscripcionId = req.params.id;
         const { atleta_id, torneo_id, fecha_inscripcion, pago_confirmado } = req.body;
@@ -182,7 +183,7 @@ module.exports = (dbPool) => {
             return res.status(400).json({ message: 'Falta el ID de la inscripción' });
         }
 
-        // Verificar que el ID de la inscripción sea un UUID válido
+        // Verifica que el ID de la inscripción sea un UUID válido
         if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(inscripcionId)) {
             return res.status(400).json({ message: 'El ID de la inscripción no tiene un formato UUID válido.' });
         }
@@ -193,7 +194,7 @@ module.exports = (dbPool) => {
         }
 
         try {
-            // Construir la consulta SQL dinámicamente
+            // Construye la consulta SQL dinámicamente
             let query = 'UPDATE Inscripciones SET ';
             const updates = [];
 
@@ -213,7 +214,7 @@ module.exports = (dbPool) => {
             query += updates.join(', ');
             query += ' WHERE id = @inscripcionId;';
 
-            // Preparar la consulta SQL
+            // Prepara la consulta SQL
             const request = dbPool.request();
             request.input('inscripcionId', sql.UniqueIdentifier, inscripcionId);
 
@@ -230,10 +231,10 @@ module.exports = (dbPool) => {
                 request.input('pago_confirmado', sql.Bit, pago_confirmado);
             }
 
-            // Ejecutar la consulta
+            // Ejecuta la consulta
             const result = await request.query(query);
 
-            // Verificar si se actualizó la inscripción
+            // Verifica si se actualizó la inscripción
             if (result.rowsAffected[0] > 0) {
                 res.status(200).json({ message: 'Inscripción actualizada exitosamente' });
             } else {
@@ -246,7 +247,7 @@ module.exports = (dbPool) => {
         }
     });
 
-    // DELETE /api/inscripciones/:id - Eliminar una inscripción específica (solo administradores y superusuarios)
+    // DELETE /api/inscripciones/:id - Elimina una inscripción específica (solo administradores y superusuarios)
     router.delete('/:id', authorize(dbPool, ['Administrator', 'SuperUsuario']), async (req, res) => {
         const inscripcionId = req.params.id;
 
@@ -255,13 +256,13 @@ module.exports = (dbPool) => {
             return res.status(400).json({ message: 'Falta el ID de la inscripción' });
         }
 
-        // Verificar que el ID de la inscripción sea un UUID válido
+        // Verifica que el ID de la inscripción sea un UUID válido
         if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(inscripcionId)) {
             return res.status(400).json({ message: 'El ID de la inscripción no tiene un formato UUID válido.' });
         }
 
         try {
-            // Preparar la consulta SQL para eliminar la inscripción
+            // Prepara la consulta SQL para eliminar la inscripción
             const request = dbPool.request();
             request.input('inscripcionId', sql.UniqueIdentifier, inscripcionId);
 
@@ -270,10 +271,10 @@ module.exports = (dbPool) => {
                 WHERE id = @inscripcionId;
             `;
 
-            // Ejecutar la consulta
+            // Ejecuta la consulta
             const result = await request.query(query);
 
-            // Verificar si se eliminó la inscripción
+            // Verifica si se eliminó la inscripción
             if (result.rowsAffected[0] > 0) {
                 res.status(200).json({ message: 'Inscripción eliminada exitosamente' });
             } else {

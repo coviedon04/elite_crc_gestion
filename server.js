@@ -1,11 +1,11 @@
 // server.js
 require('dotenv').config(); // Carga .env (importante que esté antes de db.js)
 const express = require('express');
-const { sql, connectDB } = require('./db'); // Importar desde db.js
+const { sql, connectDB } = require('./db'); // Importa desde db.js
 const path = require('path');
-const fs = require('fs'); // Importar el módulo 'fs'
-const https = require('https'); // Importar el módulo 'https'
-const authRoutes = require('./routes/authRoutes'); // Importar las rutas de autenticación
+const fs = require('fs'); // Importa el módulo 'fs'
+const https = require('https'); // Importa el módulo 'https'
+const authRoutes = require('./routes/authRoutes'); // Importa las rutas de autenticación
 
 //Variables para HTTPS
 const selfsigned = require('selfsigned');
@@ -29,12 +29,12 @@ const options = {
     cert: pems.cert
 };
 
-// Ruta de Bienvenida (sin cambios)
+// Ruta de Bienvenida
 app.get('/', (req, res) => {
     res.send('¡Bienvenido al backend de Elite CRC Taekwondo!');
 });
 
-// Ruta de Prueba de BD (modificada para usar el pool)
+// Ruta de Prueba de BD
 app.get('/test-db', async (req, res) => {
     if (!dbPool) {
         return res.status(500).send('Error: Pool de conexiones no inicializado.');
@@ -59,10 +59,10 @@ const startServer = async () => {
         // 1. Conectar a la base de datos y obtener el pool
         dbPool = await connectDB(); // dbPool se asigna aquí
 
-        app.use(express.json()); // Middleware para analizar JSON (IMPORTANTE: antes de las rutas)
+        app.use(express.json()); // Middleware para analizar JSON (IMPORTANTE: debe estar antes de las rutas)
         app.use(express.urlencoded({ extended: true }));
 
-        app.use('/api/auth', authRoutes(dbPool)); // Usar las rutas de autenticación bajo el prefijo /api/auth y pasar dbPool
+        app.use('/api/auth', authRoutes(dbPool)); // Usa las rutas de autenticación bajo el prefijo /api/auth y pasa el dbPool
 
         // Middleware para registrar todas las peticiones
         app.use((req, res, next) => {
@@ -84,39 +84,39 @@ const startServer = async () => {
         En todas se montan las rutas bajo prefijo 
         /api/{clientes,atletas,clientes,torneos, inscripciones, pagos}*/
 
-        // Importar y usar las rutas de clientes
+        // Importa y usar las rutas de clientes
         const createClienteRoutes = require('./routes/clienteRoutes');        
         const clienteRoutes = createClienteRoutes(dbPool);        
         app.use('/api/clientes', clienteRoutes);
 
-        // Importar y usar las rutas de atletas
+        // Importa y usar las rutas de atletas
         const createAtletasRoutes = require('./routes/atletasRoutes');
         const atletasRoutes = createAtletasRoutes(dbPool);
         app.use('/api/clientes', atletasRoutes); // Montar las rutas bajo /api/clientes
 
-        // Importar y usar las rutas de torneos
+        // Importa y usar las rutas de torneos
         const createTorneosRoutes = require('./routes/torneosRoutes');
         const torneosRoutes = createTorneosRoutes(dbPool);
         app.use('/api/torneos', torneosRoutes); // Montar las rutas bajo /api/torneos
 
-        // Importar y usar rutas de inscripciones
+        // Importa y usar rutas de inscripciones
         const createInscripcionesRoutes = require('./routes/inscripcionesRoutes');
         const inscripcionesRoutes = createInscripcionesRoutes(dbPool);
         app.use('/api/inscripciones', inscripcionesRoutes);
 
-        // Importar y usar rutas de pagos
+        // Importa y usar rutas de pagos
         const createPagosRoutes = require('./routes/pagosRoutes');
         const pagosRoutes = createPagosRoutes(dbPool);
         app.use('/api/pagos', pagosRoutes);
 
         // --- Fin Rutas de la API ---
 
-        // 2. Una vez conectado a la BD y rutas configuradas, iniciar el servidor Express
+        // 2. Una vez conectado a la BD y rutas configuradas, inicia el servidor Express
         https.createServer(options, app).listen(port, () => {
             console.log(`Servidor corriendo en https://localhost:${port}`);
             console.log('Listo para recibir peticiones.');
             
-            /*// Imprimir las rutas, se debe desactivar esta función, es solo para debuggear
+            /*// Imprime las rutas, se debe desactivar esta función, es solo para debuggear
             console.log("Rutas disponibles:");
             app._router.stack.forEach(function(middleware){
                 if(middleware.route){ // routes registered directly
@@ -133,10 +133,10 @@ const startServer = async () => {
 
     } catch (err) {
         console.error('Error al iniciar el servidor:', err);
-        process.exit(1); // Salir si no se puede iniciar
+        process.exit(1); // Sale si no se puede iniciar
     }
 };
 
-// Llamar a la función para iniciar todo
+// Llama a la función para iniciar todo
 console.log("cargando aplicación");
 startServer();
