@@ -241,9 +241,6 @@ module.exports = (dbPool) => {
                 res.status(500).json({ message: 'Error interno del servidor al eliminar el torneo', error: err.message });
             }
         });
-
-
-
-
+        
     return router;
 };

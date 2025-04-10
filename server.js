@@ -79,11 +79,14 @@ const startServer = async () => {
         });
 
         // --- Rutas de la API ---
-        // Importar la función que define las rutas de cliente
-        const createClienteRoutes = require('./routes/clienteRoutes');
-        // Crear las rutas de cliente pasándoles el pool de conexiones
-        const clienteRoutes = createClienteRoutes(dbPool);
-        // Montar las rutas de cliente bajo el prefijo /api/clientes
+
+        /*En todas se crea la ruta pasándole el pool de conexiones.
+        En todas se montan las rutas bajo prefijo 
+        /api/{clientes,atletas,clientes,torneos, inscripciones, pagos}*/
+
+        // Importar y usar las rutas de clientes
+        const createClienteRoutes = require('./routes/clienteRoutes');        
+        const clienteRoutes = createClienteRoutes(dbPool);        
         app.use('/api/clientes', clienteRoutes);
 
         // Importar y usar las rutas de atletas
@@ -95,6 +98,16 @@ const startServer = async () => {
         const createTorneosRoutes = require('./routes/torneosRoutes');
         const torneosRoutes = createTorneosRoutes(dbPool);
         app.use('/api/torneos', torneosRoutes); // Montar las rutas bajo /api/torneos
+
+        // Importar y usar rutas de inscripciones
+        const createInscripcionesRoutes = require('./routes/inscripcionesRoutes');
+        const inscripcionesRoutes = createInscripcionesRoutes(dbPool);
+        app.use('/api/inscripciones', inscripcionesRoutes);
+
+        // Importar y usar rutas de pagos
+        const createPagosRoutes = require('./routes/pagosRoutes');
+        const pagosRoutes = createPagosRoutes(dbPool);
+        app.use('/api/pagos', pagosRoutes);
 
         // --- Fin Rutas de la API ---
 
